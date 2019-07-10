@@ -40,5 +40,10 @@
         android:layout_height="wrap_content"
         android:text="up"
         android:id="@+id/uploadbtn"/>
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="down"
+        android:id="@+id/download"/>
 
 </LinearLayout>

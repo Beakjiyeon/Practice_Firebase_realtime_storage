@@ -14,8 +14,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -31,13 +33,18 @@ import org.w3c.dom.Text;
 public class MainActivity extends AppCompatActivity {
 
     public Uri imguri;
-    Button ch,up;
+    Button ch,up,down;
     ImageView img;
     StorageReference mStorageRef;
+    StorageReference ref;// 다운로드 시도
     private StorageTask uploadTask; //중복 방지
     Button button;
     int cnt=0;
 
+    // 이미지 다운로드 하기
+    public void download(){
+
+    }
     // 앨범에서 파일 고르기
     private void fileChooser(){
         Intent intent=new Intent();
@@ -63,7 +70,26 @@ public class MainActivity extends AppCompatActivity {
                         //Uri downloadUrl = taskSnapshot.getDownloadUrl();
                         // 성공하면
                         Toast.makeText(MainActivity.this,"Image Uproad Successfultty",Toast.LENGTH_LONG).show();
+
+                        // 참조 객체 찾기
+                        //ref=mStorageRef.child("a");
+                        //Uri downloadUrl=ref.getDownloadUrl();
+                        // 궁금: taskSnapshot에 뭐가 있을까...
+                        Log.d("백지연",taskSnapshot.getMetadata().getReference().getDownloadUrl()+"");
+                        taskSnapshot.getMetadata().getReference().getDownloadUrl()
+                                .addOnCompleteListener(MainActivity.this,
+                                        new OnCompleteListener<Uri>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Uri> task) {
+                                                if (task.isSuccessful()) {
+                                                    CafeItem ci = new CafeItem("냐옹", 5000, task.getResult().toString());
+                                                    //mFirebaseDatabaseReference.child(MESSAGES_CHILD).child(key).setValue(friendlyMessage);
+                                                    FirebaseDatabase.getInstance().getReference().push().setValue(ci);
+                                                }
+                                            }
+                                        });
                     }
+
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
@@ -90,6 +116,7 @@ public class MainActivity extends AppCompatActivity {
         mStorageRef= FirebaseStorage.getInstance().getReference("Image");
         ch=(Button)findViewById(R.id.choosebtn);
         up=(Button)findViewById(R.id.uploadbtn);
+        down=(Button)findViewById(R.id.download);
         img=(ImageView)findViewById(R.id.imageview);
         ch.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -106,6 +133,12 @@ public class MainActivity extends AppCompatActivity {
                 }else{
                     fileUploader();
                 }
+            }
+        });
+        down.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+               download();
             }
         });
 
