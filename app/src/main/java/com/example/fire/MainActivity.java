@@ -6,14 +6,18 @@ import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -29,9 +33,18 @@ import com.google.firebase.storage.StorageTask;
 import com.google.firebase.storage.UploadTask;
 
 import org.w3c.dom.Text;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.lang.String.valueOf;
+
 // 이미지 업로드 https://www.youtube.com/watch?v=6u0gzjth4IE
 public class MainActivity extends AppCompatActivity {
 
+    // 메뉴판 객체들을 담은 arraylist
+    List<CafeItem> citems;
+    CafeItemAdapter adapter; //시도
     public Uri imguri;
     Button ch,up,down;
     ImageView img;
@@ -82,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
                                             @Override
                                             public void onComplete(@NonNull Task<Uri> task) {
                                                 if (task.isSuccessful()) {
-                                                    CafeItem ci = new CafeItem("냐옹", 5000, task.getResult().toString());
+                                                    CafeItem ci = new CafeItem("시발 죽었으면", 5000, task.getResult().toString());
                                                     //mFirebaseDatabaseReference.child(MESSAGES_CHILD).child(key).setValue(friendlyMessage);
                                                     FirebaseDatabase.getInstance().getReference().push().setValue(ci);
                                                 }
@@ -111,9 +124,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        citems=new ArrayList<CafeItem>();
 
         // storage
         mStorageRef= FirebaseStorage.getInstance().getReference("Image");
+/*
         ch=(Button)findViewById(R.id.choosebtn);
         up=(Button)findViewById(R.id.uploadbtn);
         down=(Button)findViewById(R.id.download);
@@ -149,10 +164,21 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d("MainActivity", "Button - onClickListener");
-                FirebaseDatabase.getInstance().getReference().push().setValue(new CafeItem("바닐라 라떼",3000,"url3"));
-
+                //FirebaseDatabase.getInstance().getReference().push().setValue(new CafeItem("바닐라 라떼",3000,"url3"));
+            }
+        });// 버튼 이벤트 리스너
+*/
+        // 리사이클러뷰
+        RecyclerView recyclerView=findViewById(R.id.recyclerView);
+        //어댑터 만들기
+       adapter=new CafeItemAdapter(new CafeItemAdapter.OnCafeItemClickListener() {
+            @Override
+            public void onCafeItemClicked(CafeItem model) {
+                Toast.makeText(MainActivity.this, model.getName(), Toast.LENGTH_SHORT).show();
             }
         });
+        recyclerView.setAdapter(adapter);
+        Log.d("현재",citems.size()+"");
 
         // 데이터베이스 읽기 #2. Single ValueEventListener
         FirebaseDatabase.getInstance().getReference().addListenerForSingleValueEvent(new ValueEventListener() {
@@ -160,7 +186,31 @@ public class MainActivity extends AppCompatActivity {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     Log.d("MainActivity", "Single ValueEventListener : " + snapshot.getValue());
+                    Log.d("데이터",valueOf(snapshot)+"형");
+                    String name = (String) snapshot.child("name").getValue();
+                    Long pricen = (Long) snapshot.child("price").getValue();
+                    int price=pricen.intValue();
+                    String imageUrl=(String)snapshot.child("imageUrl").getValue();
+
+                    // 객체 형태로 받아와야 함.
+                    //CafeItem ciObject = dataSnapshot.getValue(CafeItem.class);
+                    citems.add(new CafeItem(name,price,imageUrl));
+                    Log.d("현재 들어감",citems.size()+"");
+
+                    /*
+                    if(ciObject!=null) {
+
+                        Log.d("데이터1",ciObject.getName());
+                        Log.d("데이터2", message+"이다");
+                       // Log.d("데이터3", ciObject.getPrice() + "이다");
+                    }
+                    */
+//리사이클러뷰....?
+
                 }
+                adapter.setItems(citems);
+                Log.d("현재2 for문종료후",citems.size()+"");
+                Log.d("객체생성되어있나",citems.get(0).getName());
             }
 
             @Override
@@ -168,9 +218,81 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
-
        // 파이어베이스 입출력 : 출처: https://stack07142.tistory.com/282 [Hello World]
 
-    }
+
+    }// onCreate()
+    // 리사이클러뷰 어댑터 클래스
+    private static class CafeItemAdapter extends RecyclerView.Adapter<CafeItemAdapter.CafeItemViewHolder> {
+        interface OnCafeItemClickListener {
+            void onCafeItemClicked(CafeItem model);
+        }
+
+        private OnCafeItemClickListener mListener;
+
+        private List<CafeItem> mItems = new ArrayList<>();
+
+        public CafeItemAdapter() {}
+
+        public CafeItemAdapter(OnCafeItemClickListener listener) {
+            mListener = listener;
+        }
+
+        public void setItems(List<CafeItem> items) {
+            this.mItems = items;
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public CafeItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_cafeitem, parent, false);
+            final CafeItemViewHolder viewHolder = new CafeItemViewHolder(view);
+            view.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mListener != null) {
+                        final CafeItem item = mItems.get(viewHolder.getAdapterPosition());
+                        mListener.onCafeItemClicked(item);
+                    }
+                }
+            });
+            return viewHolder;
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull CafeItemViewHolder holder, int position) {
+            CafeItem item = mItems.get(position);
+            // TODO : 데이터를 뷰홀더에 표시하시오
+            holder.name.setText(item.getName());
+            holder.price.setText(item.getPrice()+"");
+            // holder.cafe_imageview.setImageResource();
+            Glide.with(holder.cafe_imageview.getContext())
+                    .load(item.getImageUrl())
+                    .into(holder.cafe_imageview);
+            //String imageUrl = friendlyMessage.getImageUrl();
+        }
+
+        @Override
+        public int getItemCount() {
+            return mItems.size();
+        }
+
+        public static class CafeItemViewHolder extends RecyclerView.ViewHolder {
+            // TODO : 뷰홀더 완성하시오
+            TextView name;
+            TextView price;
+            ImageView cafe_imageview;
+
+            public CafeItemViewHolder(@NonNull View itemView) {
+                super(itemView);
+                // TODO : 뷰홀더 완성하시오
+                name=itemView.findViewById(R.id.name_text);
+                price=itemView.findViewById(R.id.age_text);
+                cafe_imageview=itemView.findViewById(R.id.cafe_imageview);
+            }
+        }
+    }//CafeItemAdapter 클래스
+
 }
